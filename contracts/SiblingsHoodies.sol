@@ -17,16 +17,12 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 interface IERC20 {
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
 contract SiblingHoodies is ERC1155, Ownable {
     bytes4 private constant _INTERFACE_ID_EIP2981 = 0x2a55205a;
-    
+
     //address public _ASH_CONTRACT = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92; // MAINNET ASH
     address public constant _ASH_CONTRACT = 0x01BE23585060835E02B77ef475b0Cc51aA1e0709; // TESTNET CHAINLINK
     address payable private _royaltyRecipient;
@@ -35,42 +31,35 @@ contract SiblingHoodies is ERC1155, Ownable {
     uint256 public constant _PRICE = 1 * 10**18; // 1 ASH
     uint256 public constant _MAX_MINTS = 100;
     uint256 public supply;
+    uint256 public phase;
 
     bool public active;
+    bool public allowListOnly;
 
-    mapping(address => bool) public mintList;
+    mapping(address => bool) public allowList;
     mapping(address => bool) public hasMinted;
-    mapping(uint256 => bool) public locked;
     mapping(uint256 => string) private _uris;
 
     constructor() ERC1155("") {
         _royaltyRecipient = payable(msg.sender);
         _royaltyBps = 1000;
-        locked[2] = true;
     }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(ERC1155)
-        returns (bool)
-    {
-        return
-            interfaceId == _INTERFACE_ID_EIP2981 
-            || ERC1155.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155) returns (bool) {
+        return interfaceId == _INTERFACE_ID_EIP2981 || ERC1155.supportsInterface(interfaceId);
     }
 
     function mintToken() external {
+
         require(active, "Sale is not active");
         require(supply < _MAX_MINTS, "Sold out");
         require(!hasMinted[msg.sender], "One mint per wallet");
-        require(mintList[msg.sender], "Address not on mintList");
+        if(allowListOnly) {
+            require(allowList[msg.sender], "Address not on allowList");
+        }
 
         IERC20(_ASH_CONTRACT).transferFrom(msg.sender, _royaltyRecipient, _PRICE);
-
         _mint(msg.sender, 1, 1, "");
-
         hasMinted[msg.sender] = true;
         supply++;
     }
@@ -78,38 +67,48 @@ contract SiblingHoodies is ERC1155, Ownable {
     function redeem(uint256 amount) external {
         require(amount != 0, "Amount can't be 0");
         require(amount <= balanceOf(msg.sender, 1), "Insufficent amount of token(s)");
+        require(phase == 1 || phase == 2, "Token is not redeemable");
         _burn(msg.sender, 1, amount);
         _mint(msg.sender, 2, amount, "");
     }
 
-    function toggleOption(uint256 option, uint256 tokenId) external onlyOwner {
-        if (option == 1) {
-            active = !active;
-        } else if (option == 2) {
-            locked[tokenId] = !locked[tokenId];
-        }
+    function activeSale() public onlyOwner {
+        active = true;
+        activateNextPhase();
+        allowListOnly = true;
     }
 
-    function addMintList(address[] calldata addresses) external onlyOwner {
+    function activatePublicSale() public onlyOwner {
+        allowListOnly = false;
+    }
+
+    function activateNextPhase() public onlyOwner {
+        require(active, "Sale has not been activated");
+        require(phase < 4, "Final phase has been reached");
+        phase++;
+    }
+
+    function lockedToken(uint256 tokenId) public view returns(bool isLocked) {
+        isLocked = true;
+        if(tokenId == 1) {
+            if (phase == 1 || phase == 3) {
+                isLocked = false;
+            } 
+        }
+
+    }
+
+    function addAllowList(address[] calldata addresses) external onlyOwner {
         for (uint256 i; i < addresses.length; i++) {
-            mintList[addresses[i]] = true;
+            allowList[addresses[i]] = true;
         }
     }
 
-    function updateUri(uint256 tokenId, string calldata newUri)
-        external
-        onlyOwner
-    {
+    function updateUri(uint256 tokenId, string calldata newUri) external onlyOwner {
         _uris[tokenId] = newUri;
     }
 
-    function uri(uint256 tokenId)
-        public
-        view
-        virtual
-        override
-        returns (string memory)
-    {
+    function uri(uint256 tokenId) public view virtual override returns (string memory) {
         return _uris[tokenId];
     }
 
@@ -129,7 +128,7 @@ contract SiblingHoodies is ERC1155, Ownable {
             "ERC1155: caller is not owner nor approved"
         );
         // Locks NFT from being transfered or sold
-        require(!locked[id], "Transfers locked by contract");
+        require(!lockedToken(id), "Transfers locked by contract");
         _safeTransferFrom(from, to, id, amount, data);
     }
 
@@ -150,7 +149,7 @@ contract SiblingHoodies is ERC1155, Ownable {
         );
         // Locks NFT(s) from being transfered or sold
         for (uint256 i; i < ids.length; i++) {
-            require(!locked[ids[i]], "Transfers locked by contract");
+            require(!lockedToken(ids[i]), "Transfers locked by contract");
         }
         _safeBatchTransferFrom(from, to, ids, amounts, data);
     }

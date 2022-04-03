@@ -20,7 +20,7 @@ interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
-contract SiblingHoodies is ERC1155, Ownable {
+contract SiblingsHoodies is ERC1155, Ownable {
     bytes4 private constant _INTERFACE_ID_EIP2981 = 0x2a55205a;
 
     //address public _ASH_CONTRACT = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92; // MAINNET ASH
@@ -29,7 +29,7 @@ contract SiblingHoodies is ERC1155, Ownable {
     uint256 private _royaltyBps;
 
     uint256 public constant _PRICE = 1 * 10**18; // 1 ASH
-    uint256 public constant _MAX_MINTS = 100;
+    uint256 public constant _MAX_MINTS = 3;      // put to three for testing purposes
     uint256 public supply;
     uint256 public phase;
 
@@ -50,7 +50,6 @@ contract SiblingHoodies is ERC1155, Ownable {
     }
 
     function mintToken() external {
-
         require(active, "Sale is not active");
         require(supply < _MAX_MINTS, "Sold out");
         require(!hasMinted[msg.sender], "One mint per wallet");
@@ -72,6 +71,13 @@ contract SiblingHoodies is ERC1155, Ownable {
         _mint(msg.sender, 2, amount, "");
     }
 
+    function airdrop(address[] calldata addresses, uint256 tokenId) external onlyOwner {
+        require(tokenId == 1 || tokenId == 2);
+        for (uint256 i; i < addresses.length; i++) {
+            _mint(addresses[i], tokenId, 1, "");
+        }
+    }
+
     function activeSale() public onlyOwner {
         active = true;
         activateNextPhase();
@@ -84,7 +90,7 @@ contract SiblingHoodies is ERC1155, Ownable {
 
     function activateNextPhase() public onlyOwner {
         require(active, "Sale has not been activated");
-        require(phase < 4, "Final phase has been reached");
+        require(phase < 3, "Final phase has been reached");
         phase++;
     }
 

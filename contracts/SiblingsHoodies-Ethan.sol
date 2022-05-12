@@ -14,17 +14,7 @@ pragma solidity ^0.8.0;
 //                                            "Y88P"                                       \\
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
-/**
- * @dev Contract module that stores an address as an 'owner'
- * and addresses as 'admins'.
- *
- * Inheriting from `AdminPrivileges` will make the
- * {onlyAdmins} modifier available, which can be applied to
- * functions to restrict all wallets except for the stored
- * owner and admin addresses.
- */
 contract AdminPrivileges {
     address public _owner;
 
@@ -112,9 +102,6 @@ contract RoyaltiesConfig is AdminPrivileges {
     }
 }
 
-/**
-* @dev Allowlist contract module.
-*/
 contract Allowlist is AdminPrivileges {
     mapping(address => uint) public allowlist;
 
@@ -212,14 +199,16 @@ interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
-contract SibHoodies is ERC1155, ERC1155Supply, AdminPrivileges, RoyaltiesConfig, Allowlist, AdminPause {
-    // address public ASH = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92;
-    address public ASH = 0xBEDAcEf5AfC744B7343fcFa619AaF81962Bf82F2; // Rinkeby Test ERC20 Token
+contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, AdminPause {
     address public payoutAddress; // Should be private at deployment!
-    uint public PRICE = 1 * 10 ** 18; // 1 ASH
-    uint public MAX_SUPPLY = 100;
-    mapping(uint => string) private uris;
-    mapping(address => bool) public mintClaimed;
+    // ASH_ADDRESS SHOULD BE CONSTANT ON DEPLOYMENT
+    // address public ASH_ADDRESS = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92;
+    address public ASH_ADDRESS = 0xBEDAcEf5AfC744B7343fcFa619AaF81962Bf82F2; // Rinkeby Test ERC20 Token
+    uint256 constant public PRICE = 1 * 10 ** 18; // 1 ASH
+    uint8 constant public MAX_SUPPLY = 100;
+    uint256 private totalTokens;
+    mapping(uint256 => string) private uris;
+    mapping(address => uint8) public mintClaimed;
 
     bool public tokenLocked;
     bool public tokenRedeemable;
@@ -234,31 +223,47 @@ contract SibHoodies is ERC1155, ERC1155Supply, AdminPrivileges, RoyaltiesConfig,
 
     function mint() public whenNotPaused {
         require(saleActive, "Mint is not available now");
-        require(totalSupply(1) < MAX_SUPPLY, "All tokens have been minted");
-        require(!mintClaimed[msg.sender], "You have already minted");
+        require(totalTokens < MAX_SUPPLY, "All tokens have been minted");
+        require(mintClaimed[msg.sender] == 0, "You have already minted");
         if (alRequired) {
             require(allowlist[msg.sender] > 0, "You must be on the allowlist to mint now");
         }
 
-        require(IERC20(ASH).transferFrom(msg.sender, payoutAddress, PRICE), "Ash Payment failed - check if this contract is approved");
-        mintClaimed[msg.sender] = true;
+        require(
+            IERC20(ASH_ADDRESS).transferFrom(msg.sender, payoutAddress, PRICE),
+            "Ash Payment failed - check if this contract is approved"
+        );
+        mintClaimed[msg.sender]++;
         _mint(msg.sender, 1, 1, "");
     }
 
-    function redeem(uint amount) public whenNotPaused {
+    function redeem(uint256 amount) public whenNotPaused {
         require(tokenRedeemable, "Merch redemption is not available now");
         require(amount > 0, "Cannot redeem less than one");
         _burn(msg.sender, 1, amount);
         _mint(msg.sender, 2, amount, "");
     }
 
+    function isTokenLocked(uint8 tokenId) public view returns (bool) {
+        return tokenId == 1 && !tokenLocked ? false : true;
+    }
+
     // ADMIN FUNCTIONS //
 
-    function airdrop(address[] calldata to, uint tokenId) public onlyAdmins {
+    function airdrop(address[] calldata to, uint8 tokenId) public onlyAdmins {
         require(tokenId == 1 || tokenId == 2);
-        for (uint i; i < to.length; i++) {
+        for (uint8 i; i < to.length; i++) {
             _mint(to[i], tokenId, 1, "");
         }
+    }
+
+    // THIS FUNCTION IS FOR TESTING PURPOSES AND SHOULD BE REMOVED ON DEPLOYMENT
+    function setAshAddress(address _addr) public onlyAdmins {
+        ASH_ADDRESS = _addr;
+    }
+
+    function setPayoutAddress(address _addr) public onlyAdmins {
+        payoutAddress = _addr;
     }
 
     function setSaleActive(bool active) public onlyAdmins {
@@ -269,18 +274,6 @@ contract SibHoodies is ERC1155, ERC1155Supply, AdminPrivileges, RoyaltiesConfig,
         alRequired = required;
     }
 
-    function setMaxSupply(uint supply) public onlyAdmins {
-        MAX_SUPPLY = supply;
-    }
-
-    function setAshAddress(address _addr) public onlyAdmins {
-        ASH = _addr;
-    }
-
-    function setPrice(uint price) public onlyAdmins {
-        PRICE = price;
-    }
-
     function setTokenRedeemable(bool redeemable) public onlyAdmins {
         tokenRedeemable = redeemable;
     }
@@ -289,7 +282,7 @@ contract SibHoodies is ERC1155, ERC1155Supply, AdminPrivileges, RoyaltiesConfig,
         tokenLocked = locked;
     }
 
-    function setURI(uint tokenId, string memory _uri) public onlyAdmins {
+    function setURI(uint8 tokenId, string memory _uri) public onlyAdmins {
         uris[tokenId] = _uri;
     }
 
@@ -299,15 +292,29 @@ contract SibHoodies is ERC1155, ERC1155Supply, AdminPrivileges, RoyaltiesConfig,
         return uris[tokenId];
     }
 
+    function phase() public view returns (uint8) {
+        if(tokenLocked) {
+            return tokenRedeemable ? 2 : 3;
+        } else {
+            return tokenRedeemable ? 1 : 4;
+        }
+    }
+
+    function _mint(address to, uint256 id, uint256 amount, bytes memory data) internal override {
+        totalTokens += amount;
+        super._mint(to, id, amount, data);
+    }
+
     function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
         internal
-        override(ERC1155, ERC1155Supply)
+        override(ERC1155)
         whenNotPaused
     {
-        require(!tokenLocked || from == address(0), "This token may not be transferred now");
-
-        for (uint i; i < ids.length; i++) {
-            require(ids[i] == 1 || from == address(0), "This token may not be transferred");
+        if (from != address(0) && to != address(0)) {
+            require(!tokenLocked, "This token may not be transferred now");
+            for (uint256 i; i < ids.length; i++) {
+                require(ids[i] == 1, "This token may not be transferred");
+            }
         }
 
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);

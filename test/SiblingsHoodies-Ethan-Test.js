@@ -8,8 +8,6 @@ beforeEach(async function () {
     moreWallets = [];
     for (var i = 0; i < 100; i++) {
         wallet = ethers.Wallet.createRandom();
-        // wallet =  wallet.connect(ethers.provider);
-        // await addr1.sendTransaction({to: wallet.address, value: ethers.utils.parseEther("1")});
         moreWallets.push(wallet);
     }
 
@@ -134,6 +132,14 @@ describe("Redeeming", function () {
         expect(await contractInstance.balanceOf(addr1.address, 2)).to.equal(2);
     });
 
+    it("Redemption still works when tokenLocked is true", async function () {
+        await contractInstance.airdrop([addr1.address], 1);
+        await contractInstance.setTokenRedeemable(true);
+        await contractInstance.setTokenLock(true);
+
+        await contractInstance.connect(addr1).redeem(1);
+    });
+
     it("Redemption is unavailable when contract is paused", async function () {
         await contractInstance.airdrop([addr1.address], 1);
         await contractInstance.setTokenRedeemable(true);
@@ -154,6 +160,12 @@ describe("Airdropping", function () {
         await expect(contractInstance.airdrop([addr1.address], 3)).to.be.reverted;
     });
 
+    it("Airdrop function still works when tokenLocked is true", async function () {
+        await contractInstance.setTokenLock(true);
+
+        await contractInstance.airdrop([addr1.address], 1);
+    });
+
     it("Airdrop function mints correct tokens to correct wallets", async function () {
         await contractInstance.airdrop([addr1.address, addr2.address], 1);
         expect (await contractInstance.balanceOf(addr1.address, 1)).to.equal(1);
@@ -167,20 +179,9 @@ describe("Setter Functions", function () {
         expect(await contractInstance.saleActive()).to.equal(true);
     });
 
-    it("setMaxSupply", async function () {
-        await contractInstance.setMaxSupply(100);
-        expect(await contractInstance.MAX_SUPPLY()).to.equal(100);
-    });
-
-    it("setAshAddress", async function () {
-        const randAddress = ethers.Wallet.createRandom();
-        await contractInstance.setAshAddress(randAddress.address);
-        expect(await contractInstance.ASH()).to.equal(randAddress.address);
-    });
-
-    it("setPrice", async function () {
-        await contractInstance.setPrice(ethers.BigNumber.from("100000000000000000000"));
-        expect(await contractInstance.PRICE()).to.equal(ethers.BigNumber.from("100000000000000000000"));
+    it("setPayoutAddress", async function () {
+        await contractInstance.setPayoutAddress(addr1.address);
+        expect(await contractInstance.payoutAddress()).to.equal(addr1.address);
     });
 
     it("setTokenRedeemable", async function () {

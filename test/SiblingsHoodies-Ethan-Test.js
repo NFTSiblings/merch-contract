@@ -34,19 +34,95 @@ describe("Deployment", function () {
 });
 
 describe("Minting", function () {
-    it("Mint function correctly mints token", async function () {
-        await contractInstance.setSaleActive(true);
-        await contractInstance.connect(addr1).mint();
+    describe("During Allowlist Sale", function () {
+        it("Caller must be on allowlist", async function () {
+            await contractInstance.setSaleActive(true);
+    
+            await expect(contractInstance.connect(addr1).mint(true)).to.be.revertedWith("You must be on the allowlist to mint now");
+    
+            await contractInstance.addToAllowlist([addr1.address]);
+    
+            await contractInstance.connect(addr1).mint(true);
+        });
 
-        expect(await contractInstance.balanceOf(addr1.address, 1)).to.equal(1);
+        it("Mint function correctly mints token", async function () {
+            await contractInstance.addToAllowlist([addr1.address]);
+            await contractInstance.setSaleActive(true);
+            await contractInstance.connect(addr1).mint(true);
+    
+            expect(await contractInstance.balanceOf(addr1.address, 1)).to.equal(1);
+        });
+
+        it("Accepts only the correct amount of ETH (when paying with ETH)", async function () {
+            await contractInstance.addToAllowlist([addr1.address]);
+            await contractInstance.setSaleActive(true);
+
+            await expect(contractInstance.connect(addr1).mint(false))
+            .to.be.revertedWith("Incorrect amount of Ether sent");
+
+            await expect(contractInstance.connect(addr1).mint(false, { value: ethers.utils.parseEther("0.03") }))
+            .to.be.revertedWith("Incorrect amount of Ether sent");
+
+            await expect(contractInstance.connect(addr1).mint(false, { value: ethers.utils.parseEther("1") }))
+            .to.be.revertedWith("Incorrect amount of Ether sent");
+
+            await contractInstance.connect(addr1).mint(false, { value: ethers.utils.parseEther("0.01") });
+        });
+    
+        it("Transfers the correct amount of ASH (when paying with ASH)", async function () {
+            await contractInstance.addToAllowlist([addr1.address]);
+            await contractInstance.setSaleActive(true);
+            const priorBalance = await testToken.balanceOf(addr1.address);
+            await contractInstance.connect(addr1).mint(true);
+            
+            const expectedBalance = priorBalance - await contractInstance.ASH_PRICE_AL();
+            expect(await testToken.balanceOf(addr1.address)).to.equal(ethers.BigNumber.from(expectedBalance.toString()));
+        });
     });
 
-    it("Mint is not available until sale is activated", async function () {
-        await expect(contractInstance.connect(addr1).mint()).to.be.revertedWith("Mint is not available now");
+    describe("During Public Sale", function () {
+        it("Mint function correctly mints token", async function () {
+            await contractInstance.setAlRequirement(false);
+            await contractInstance.setSaleActive(true);
+            await contractInstance.connect(addr1).mint(true);
+    
+            expect(await contractInstance.balanceOf(addr1.address, 1)).to.equal(1);
+        });
+
+        it("Accepts only the correct amount of ETH (when paying with ETH)", async function () {
+            await contractInstance.setAlRequirement(false);
+            await contractInstance.setSaleActive(true);
+
+            await expect(contractInstance.connect(addr1).mint(false))
+            .to.be.revertedWith("Incorrect amount of Ether sent");
+
+            await expect(contractInstance.connect(addr1).mint(false, { value: ethers.utils.parseEther("0.01") }))
+            .to.be.revertedWith("Incorrect amount of Ether sent");
+
+            await expect(contractInstance.connect(addr1).mint(false, { value: ethers.utils.parseEther("1") }))
+            .to.be.revertedWith("Incorrect amount of Ether sent");
+
+            await contractInstance.connect(addr1).mint(false, { value: ethers.utils.parseEther("0.03") });
+        });
+    
+        it("Transfers the correct amount of ASH (when paying with ASH)", async function () {
+            await contractInstance.setAlRequirement(false);
+            await contractInstance.setSaleActive(true);
+            const priorBalance = await testToken.balanceOf(addr1.address);
+            await contractInstance.connect(addr1).mint(true);
+            
+            const expectedBalance = priorBalance - await contractInstance.ASH_PRICE();
+            expect(await testToken.balanceOf(addr1.address)).to.equal(ethers.BigNumber.from(expectedBalance.toString()));
+        });
+    });
+
+    it("Minting is not available until sale is activated", async function () {
+        await contractInstance.addToAllowlist([addr1.address]);
+        await expect(contractInstance.connect(addr1).mint(true)).to.be.revertedWith("Mint is not available now");
 
         await contractInstance.setSaleActive(true);
 
-        await contractInstance.connect(addr1).mint();
+        await contractInstance.connect(addr1).mint(true);
     });
 
     it("No more than 100 can be minted", async function () {
@@ -59,55 +135,38 @@ describe("Minting", function () {
         // Checking that 100 tokens were actually minted
         expect(await contractInstance.balanceOf(moreWallets[99].address, 1)).to.equal(1);
 
-        await expect(contractInstance.connect(addr1).mint()).to.be.revertedWith("All tokens have been minted");
+        await expect(contractInstance.connect(addr1).mint(true)).to.be.revertedWith("All tokens have been minted");
     });
 
     it("Wallets cannot mint more than one each", async function () {
-        await contractInstance.setSaleActive(true);
-
-        await contractInstance.connect(addr1).mint();
-        await expect(contractInstance.connect(addr1).mint()).to.be.revertedWith("You have already minted");
-    });
-
-    it("When allowlist is required, minter must be on allowlist", async function () {
-        await contractInstance.setAlRequirement(true);
-        await contractInstance.setSaleActive(true);
-
-        await expect(contractInstance.connect(addr1).mint()).to.be.revertedWith("You must be on the allowlist to mint now");
-
         await contractInstance.addToAllowlist([addr1.address]);
-
-        await contractInstance.connect(addr1).mint();
-    });
-
-    it("Correct amount of ERC20 tokens are sent to the payout address upon minting", async function () {
-        // THIS TEST REQUIRES THAT {payoutAddress} BE A PUBLIC VARIABLE ON THE SMART CONTRACT
         await contractInstance.setSaleActive(true);
-        await contractInstance.connect(addr1).mint();
 
-        const a = await contractInstance.payoutAddress();
-        expect(await testToken.balanceOf(a)).to.equal(ethers.BigNumber.from("1000000000000000000"));
+        await contractInstance.connect(addr1).mint(true);
+        await expect(contractInstance.connect(addr1).mint(true)).to.be.revertedWith("You have already minted");
     });
 
     it("Mint function still works when tokenLocked is true", async function () {
+        await contractInstance.addToAllowlist([addr1.address]);
         await contractInstance.setSaleActive(true);
         await contractInstance.setTokenLock(true);
-        await contractInstance.connect(addr1).mint();
+        await contractInstance.connect(addr1).mint(true);
     });
 
     it("Cannot mint when contract is paused", async function () {
+        await contractInstance.addToAllowlist([addr1.address]);
         await contractInstance.setSaleActive(true);
         await contractInstance.togglePause();
         expect(await contractInstance.paused()).to.equal(true);
-        await expect(contractInstance.connect(addr1).mint()).to.be.revertedWith("AdminPausable: contract is paused");
+        await expect(contractInstance.connect(addr1).mint(true)).to.be.revertedWith("AdminPausable: contract is paused");
     });
 });
 
 describe("Redeeming", function () {
     it("Redemption unavailable if tokenRedeemable is false", async function () {
         await contractInstance.airdrop([addr1.address], 1);
+        await contractInstance.setTokenRedeemable(false);
 
-        //tokenRedeemable is initialised as false
         await expect(contractInstance.connect(addr1).redeem(1)).to.be.revertedWith("Merch redemption is not available now");
     });
 
@@ -177,6 +236,21 @@ describe("Setter Functions", function () {
     it("setSaleActive", async function () {
         await contractInstance.setSaleActive(true);
         expect(await contractInstance.saleActive()).to.equal(true);
+    });
+
+    it("setPrices", async function () {
+        const argArray = [
+            ethers.BigNumber.from("11000000000000000000"),
+            ethers.BigNumber.from("12000000000000000000"),
+            ethers.BigNumber.from("130000000000000000"),
+            ethers.BigNumber.from("140000000000000000")
+        ];
+        await contractInstance.setPrices(argArray);
+
+        expect(await contractInstance.ASH_PRICE()).to.equal("11000000000000000000");
+        expect(await contractInstance.ASH_PRICE_AL()).to.equal("12000000000000000000");
+        expect(await contractInstance.ETH_PRICE()).to.equal(ethers.utils.parseEther("0.13"));
+        expect(await contractInstance.ETH_PRICE_AL()).to.equal(ethers.utils.parseEther("0.14"));
     });
 
     it("setPayoutAddress", async function () {
@@ -267,5 +341,24 @@ describe("Transfers", function () {
         await expect(contractInstance.connect(addr1).safeTransferFrom(addr1.address, addr2.address, 1, 1, []))
         .to.be.revertedWith("AdminPausable: contract is paused");
 
+    });
+});
+
+describe("Withdrawing funds from contract", function () {
+    it("Withdraw function sends funds to the correct address", async function () {
+        await contractInstance.addToAllowlist([addr1.address]);
+        await contractInstance.setSaleActive(true);
+        await contractInstance.connect(addr1).mint(false, { value: ethers.utils.parseEther("0.01")});
+        
+        const balancePrior = await ethers.provider.getBalance(owner.address);
+        await contractInstance.withdraw();
+        expect(await ethers.provider.getBalance(owner.address)).to.be.gt(balancePrior);
+        expect(await ethers.provider.getBalance(contractInstance.address)).to.equal(0);
+    });
+
+    it("Only callable by admins", async function () {
+        await expect(
+            contractInstance.connect(addr1).withdraw()
+        ).to.be.revertedWith("AdminPrivileges: caller is not an admin");
     });
 });

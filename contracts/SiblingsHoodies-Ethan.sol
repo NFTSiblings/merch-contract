@@ -199,7 +199,7 @@ interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
-contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, AdminPause {
+contract SibHoodiesBeta is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, AdminPause {
     // address constant public ASH_ADDRESS = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92;
     address public ASH_ADDRESS = 0xBEDAcEf5AfC744B7343fcFa619AaF81962Bf82F2; // Rinkeby Test ERC20 Token
     address public payoutAddress; // Should be private at deployment!

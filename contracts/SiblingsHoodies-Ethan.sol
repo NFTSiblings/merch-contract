@@ -195,82 +195,16 @@ contract AdminPause is AdminPrivileges {
     }
 }
 
-// contract ALSalePeriod is AdminPrivileges {
-//     uint public alSaleLength;
-//     uint private saleTimestamp;
-
-//     constructor(uint _alSaleHours) {
-//         setALSaleLengthInHours(_alSaleHours);
-//     }
-
-//     /**
-//     * @dev Begins allowlist sale period. Public sale period
-//     * automatically begins after allowlist sale period
-//     * concludes.
-//     */
-//     function beginALSale() public onlyAdmins {
-//         saleTimestamp = block.timestamp;
-//     }
-
-//     /**
-//     * @dev Updates allowlist sale period length.
-//     */
-//     function setALSaleLengthInHours(uint length) public onlyAdmins {
-//         alSaleLength = length * 3600;
-//     }
-
-//     /**
-//     * @dev Returns whether the allowlist sale phase is
-//     * currently active.
-//      */
-//     function isAllowlistSaleActive() public view returns (bool) {
-//         return saleTimestamp != 0 && block.timestamp < saleTimestamp + alSaleLength;
-//     }
-
-//     /**
-//     * @dev Returns whether the public sale phase is currently
-//     * active.
-//      */
-//     function isPublicSaleActive() public view returns (bool) {
-//         return block.timestamp > saleTimestamp + alSaleLength;
-//     }
-
-//     /**
-//     * @dev Restricts functions from being called except for during
-//     * the allowlist sale period.
-//     */
-//     modifier onlyDuringALPeriod() {
-//         require(
-//             saleTimestamp != 0 && block.timestamp < saleTimestamp + alSaleLength,
-//             "ALSalePeriod: This function may only be run during the allowlist sale period."
-//         );
-//         _;
-//     }
-
-//     /**
-//     * @dev Restricts a function from being called except after the
-//     * allowlist sale period has ended.
-//     */
-//     modifier onlyDuringPublicSale() {
-//         require(
-//             saleTimestamp != 0 && block.timestamp >= saleTimestamp + alSaleLength,
-//             "ALSalePeriod: This function may only be run after the allowlist sale period is over."
-//         );
-//         _;
-//     }
-// }
-
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
 contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, AdminPause {
-    // ASH_ADDRESS SHOULD BE CONSTANT ON DEPLOYMENT
-    // address public ASH_ADDRESS = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92;
+    // address constant public ASH_ADDRESS = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92;
     address public ASH_ADDRESS = 0xBEDAcEf5AfC744B7343fcFa619AaF81962Bf82F2; // Rinkeby Test ERC20 Token
     address public payoutAddress; // Should be private at deployment!
-    uint256 public ASH_PRICE = 15 * 10 ** 18; // 1 ASH
-    uint256 public ASH_PRICE_AL = 5 * 10 ** 18; // 1 ASH
+    uint256 public ASH_PRICE = 15 * 10 ** 18; // 15 ASH
+    uint256 public ASH_PRICE_AL = 5 * 10 ** 18; // 15 ASH
     uint256 public ETH_PRICE = 0.03 ether;
     uint256 public ETH_PRICE_AL = 0.01 ether;
     uint256 public totalMints;
@@ -316,39 +250,6 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
         mintClaimed[msg.sender]++;
         _mint(msg.sender, 1, 1, "");
     }
-
-    // function publicMint(bool ashPayment) public payable whenNotPaused onlyDuringPublicSale {
-    //     if (ashPayment) {
-    //         require(
-    //             IERC20(ASH_ADDRESS).transferFrom(msg.sender, payoutAddress, ASH_PRICE),
-    //             "Ash Payment failed - check if this contract is approved"
-    //         );
-    //     } else {
-    //         require(msg.value == ETH_PRICE, "Incorrect amount of Ether sent");
-    //     }
-    //     mint();
-    // }
-
-    // function allowlistMint(bool ashPayment) public payable whenNotPaused requireAllowlist onlyDuringALPeriod {
-    //     if (ashPayment) {
-    //         require(
-    //             IERC20(ASH_ADDRESS).transferFrom(msg.sender, payoutAddress, ASH_PRICE_AL),
-    //             "Ash Payment failed - check if this contract is approved"
-    //         );
-    //     } else {
-    //         require(msg.value == ETH_PRICE_AL, "Incorrect amount of Ether sent");
-    //     }
-    //     mint();
-    // }
-
-    // function mint() internal {
-    //     require(saleActive, "Mint is not available now");
-    //     require(totalMints < MAX_SUPPLY, "All tokens have been minted");
-    //     require(mintClaimed[msg.sender] == 0, "You have already minted");
-
-    //     mintClaimed[msg.sender]++;
-    //     _mint(msg.sender, 1, 1, "");
-    // }
 
     function redeem(uint256 amount) public whenNotPaused {
         require(tokenRedeemable, "Merch redemption is not available now");
@@ -416,7 +317,7 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
         return uris[tokenId];
     }
 
-    function phase() public view returns (uint8) {
+    function phase() public view returns (uint256) {
         if(tokenLocked) {
             return tokenRedeemable ? 2 : 3;
         } else {

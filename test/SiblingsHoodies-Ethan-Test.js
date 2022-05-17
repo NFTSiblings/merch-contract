@@ -72,11 +72,17 @@ describe("Minting", function () {
         it("Transfers the correct amount of ASH (when paying with ASH)", async function () {
             await contractInstance.addToAllowlist([addr1.address]);
             await contractInstance.setSaleActive(true);
-            const priorBalance = await testToken.balanceOf(addr1.address);
+            const senderPriorBalance = await testToken.balanceOf(addr1.address);
+            const payeePriorBalance = await testToken.balanceOf(await contractInstance.payoutAddress());
             await contractInstance.connect(addr1).mint(true);
             
-            const expectedBalance = priorBalance - await contractInstance.ASH_PRICE_AL();
-            expect(await testToken.balanceOf(addr1.address)).to.equal(ethers.BigNumber.from(expectedBalance.toString()));
+            const senderExpectedBalance = senderPriorBalance - await contractInstance.ASH_PRICE_AL();
+            expect(await testToken.balanceOf(addr1.address))
+            .to.equal(ethers.BigNumber.from(senderExpectedBalance.toString()));
+
+            const payeeExpectedBalance = payeePriorBalance + await contractInstance.ASH_PRICE_AL();
+            expect(await testToken.balanceOf(await contractInstance.payoutAddress()))
+            .to.equal(ethers.BigNumber.from(payeeExpectedBalance.toString()));
         });
     });
 
@@ -108,11 +114,17 @@ describe("Minting", function () {
         it("Transfers the correct amount of ASH (when paying with ASH)", async function () {
             await contractInstance.setAlRequirement(false);
             await contractInstance.setSaleActive(true);
-            const priorBalance = await testToken.balanceOf(addr1.address);
+            const senderPriorBalance = await testToken.balanceOf(addr1.address);
+            const payeePriorBalance = await testToken.balanceOf(await contractInstance.payoutAddress());
             await contractInstance.connect(addr1).mint(true);
             
-            const expectedBalance = priorBalance - await contractInstance.ASH_PRICE();
-            expect(await testToken.balanceOf(addr1.address)).to.equal(ethers.BigNumber.from(expectedBalance.toString()));
+            const senderExpectedBalance = senderPriorBalance - await contractInstance.ASH_PRICE();
+            expect(await testToken.balanceOf(addr1.address))
+            .to.equal(ethers.BigNumber.from(senderExpectedBalance.toString()));
+
+            const payeeExpectedBalance = payeePriorBalance + await contractInstance.ASH_PRICE();
+            expect(await testToken.balanceOf(await contractInstance.payoutAddress()))
+            .to.equal(ethers.BigNumber.from(payeeExpectedBalance.toString()));
         });
     });
 
@@ -126,16 +138,19 @@ describe("Minting", function () {
     });
 
     it("No more than 100 can be minted", async function () {
+        await contractInstance.addToAllowlist([addr1.address, addr2.address]);
         await contractInstance.setSaleActive(true);
 
-        for (var i = 0; i < 100; i++) {
+        for (var i = 0; i < 99; i++) {
             await contractInstance.airdrop([moreWallets[i].address], 1);
         }
 
         // Checking that 100 tokens were actually minted
-        expect(await contractInstance.balanceOf(moreWallets[99].address, 1)).to.equal(1);
+        expect(await contractInstance.balanceOf(moreWallets[98].address, 1)).to.equal(1);
 
-        await expect(contractInstance.connect(addr1).mint(true)).to.be.revertedWith("All tokens have been minted");
+        await contractInstance.connect(addr1).mint(true);
+
+        await expect(contractInstance.connect(addr2).mint(true)).to.be.revertedWith("All tokens have been minted");
     });
 
     it("Wallets cannot mint more than one each", async function () {
@@ -160,6 +175,15 @@ describe("Minting", function () {
         expect(await contractInstance.paused()).to.equal(true);
         await expect(contractInstance.connect(addr1).mint(true)).to.be.revertedWith("AdminPausable: contract is paused");
     });
+
+    it("Mint still works if prices are set to 0", async function () {
+        await contractInstance.addToAllowlist([addr1.address, addr2.address]);
+        await contractInstance.setSaleActive(true);
+        await contractInstance.setPrices([0,0,0,0]);
+
+        await contractInstance.connect(addr1).mint(true);
+        await contractInstance.connect(addr2).mint(false);
+    });
 });
 
 describe("Redeeming", function () {
@@ -172,8 +196,6 @@ describe("Redeeming", function () {
 
     it("Data validation for amount argument", async function () {
         await contractInstance.airdrop([addr1.address], 1);
-        await contractInstance.airdrop([addr2.address], 1);
-        await contractInstance.setTokenRedeemable(true);
 
         await expect(contractInstance.connect(addr1).redeem(0)).to.be.revertedWith("Cannot redeem less than one");
 
@@ -181,7 +203,6 @@ describe("Redeeming", function () {
     });
 
     it("Redemption burns and mints correct amount of tokens", async function () {
-        await contractInstance.setTokenRedeemable(true);
         await contractInstance.airdrop([addr1.address], 1);
         await contractInstance.airdrop([addr1.address], 1);
 
@@ -197,6 +218,9 @@ describe("Redeeming", function () {
         await contractInstance.setTokenLock(true);
 
         await contractInstance.connect(addr1).redeem(1);
+
+        expect(await contractInstance.balanceOf(addr1.address, 1)).to.equal(0);
+        expect(await contractInstance.balanceOf(addr1.address, 2)).to.equal(1);
     });
 
     it("Redemption is unavailable when contract is paused", async function () {
@@ -216,6 +240,7 @@ describe("Airdropping", function () {
     });
 
     it("Only tokenId 1 or 2 can be airdropped", async function () {
+        await expect(contractInstance.airdrop([addr1.address], 0)).to.be.reverted;
         await expect(contractInstance.airdrop([addr1.address], 3)).to.be.reverted;
     });
 
@@ -229,6 +254,12 @@ describe("Airdropping", function () {
         await contractInstance.airdrop([addr1.address, addr2.address], 1);
         expect (await contractInstance.balanceOf(addr1.address, 1)).to.equal(1);
         expect (await contractInstance.balanceOf(addr2.address, 1)).to.equal(1);
+    });
+
+    it("Airdrop still works when contract is paused", async function () {
+        await contractInstance.togglePause();
+        await contractInstance.airdrop([addr1.address], 1);
+        expect(await contractInstance.balanceOf(addr1.address, 1)).to.equal(1);
     });
 });
 

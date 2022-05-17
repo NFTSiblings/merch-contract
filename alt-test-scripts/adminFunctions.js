@@ -12,7 +12,7 @@ let addrs;
 
 beforeEach(async function () {
   // Get the ContractFactory and Signers here.
-  const merch = await ethers.getContractFactory("SiblingHoodies");
+  const merch = await ethers.getContractFactory("SiblingsHoodies");
   [owner, addr1, addr2, addr3, addr4, addr5, ...addrs] = await ethers.getSigners();
 
   // To deploy our contract, we just have to call Token.deploy() and await

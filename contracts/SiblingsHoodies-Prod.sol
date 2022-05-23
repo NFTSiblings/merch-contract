@@ -46,6 +46,7 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
 
     constructor() ERC1155("") {
         payoutAddress = msg.sender;
+        updateRoyalties(address(0), 0);
     }
 
     // PUBLIC FUNCTIONS //
@@ -136,7 +137,7 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
     }
 
     function withdraw() public onlyAdmins {
-        payable(_owner).transfer(address(this).balance);
+        payable(owner).transfer(address(this).balance);
     }
 
     // METADATA & MISC FUNCTIONS //

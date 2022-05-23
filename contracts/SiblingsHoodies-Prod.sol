@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.1;
+pragma solidity ^0.8.0;
 
 //   .d8888b.  d8b 888      888 d8b                   888               888                \\
 //  d88P  Y88b Y8P 888      888 Y8P                   888               888                \\
@@ -27,6 +27,7 @@ interface IERC20 {
 contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, AdminPause {
     address constant public ASH_ADDRESS = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92;
     address private payoutAddress;
+
     uint256 public ASH_PRICE = 15 * 10 ** 18; // 15 ASH
     uint256 public ASH_PRICE_AL = 5 * 10 ** 18; // 5 ASH
     uint256 public ETH_PRICE = 0.03 ether;
@@ -151,7 +152,14 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
         super._mint(to, id, amount, data);
     }
 
-    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
+    function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    )
         internal
         override(ERC1155)
         whenNotPaused

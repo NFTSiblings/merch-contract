@@ -203,8 +203,9 @@ contract SibHoodiesBeta is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist,
     // address constant public ASH_ADDRESS = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92;
     address public ASH_ADDRESS = 0xBEDAcEf5AfC744B7343fcFa619AaF81962Bf82F2; // Rinkeby Test ERC20 Token
     address public payoutAddress; // Should be private at deployment!
+
     uint256 public ASH_PRICE = 15 * 10 ** 18; // 15 ASH
-    uint256 public ASH_PRICE_AL = 5 * 10 ** 18; // 15 ASH
+    uint256 public ASH_PRICE_AL = 5 * 10 ** 18; // 5 ASH
     uint256 public ETH_PRICE = 0.03 ether;
     uint256 public ETH_PRICE_AL = 0.01 ether;
     uint256 public totalMints;
@@ -332,7 +333,14 @@ contract SibHoodiesBeta is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist,
         super._mint(to, id, amount, data);
     }
 
-    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
+    function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    )
         internal
         override(ERC1155)
         whenNotPaused

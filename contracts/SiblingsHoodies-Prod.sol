@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.1;
+pragma solidity ^0.8.0;
 
 //   .d8888b.  d8b 888      888 d8b                   888               888                \\
 //  d88P  Y88b Y8P 888      888 Y8P                   888               888                \\
@@ -24,9 +24,11 @@ interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
+/// @author Sibling Labs
 contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, AdminPause {
     address constant public ASH_ADDRESS = 0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92;
     address private payoutAddress;
+
     uint256 public ASH_PRICE = 15 * 10 ** 18; // 15 ASH
     uint256 public ASH_PRICE_AL = 5 * 10 ** 18; // 5 ASH
     uint256 public ETH_PRICE = 0.03 ether;
@@ -44,10 +46,13 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
 
     constructor() ERC1155("") {
         payoutAddress = msg.sender;
+        updateRoyalties(address(0), 0);
     }
 
     // PUBLIC FUNCTIONS //
 
+    /// @notice Mint a token
+    /// @param ashPayment Determines whether payment will be made in ASH (ERC-20) or ETH
     function mint(bool ashPayment) public payable whenNotPaused {
         require(saleActive, "Mint is not available now");
         require(totalMints < MAX_SUPPLY, "All tokens have been minted");
@@ -75,6 +80,8 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
         _mint(msg.sender, 1, 1, "");
     }
 
+    /// @notice Redeem a token for a physical hoodie - use https://anniversary.clothing/
+    /// @param amount The amount of tokens to redeem
     function redeem(uint256 amount) public whenNotPaused {
         require(tokenRedeemable, "Merch redemption is not available now");
         require(amount > 0, "Cannot redeem less than one");
@@ -82,6 +89,9 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
         _mint(msg.sender, 2, amount, "");
     }
 
+    /// @notice Indicates whether a given token is transferrable
+    /// @param tokenId The token ID to check
+    /// @return Boolean indicating whether the provided token ID is transferrable
     function isTokenLocked(uint8 tokenId) public view returns (bool) {
         return tokenId == 1 && !tokenLocked ? false : true;
     }
@@ -127,15 +137,13 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
     }
 
     function withdraw() public onlyAdmins {
-        payable(_owner).transfer(address(this).balance);
+        payable(owner).transfer(address(this).balance);
     }
 
     // METADATA & MISC FUNCTIONS //
 
-    function uri(uint256 tokenId) public view override returns (string memory) {
-        return uris[tokenId];
-    }
-
+    /// @notice Indicates which 'phase' the contract is considered to be in
+    /// @return Phase of contract, as an integer
     function phase() public view returns (uint256) {
         if(tokenLocked) {
             return tokenRedeemable ? 2 : 3;
@@ -144,17 +152,31 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
         }
     }
 
-    function _mint(address to, uint256 id, uint256 amount, bytes memory data) internal override {
-        if (id == 1) {
-            totalMints += amount;
-        }
-        super._mint(to, id, amount, data);
+    /// @notice See {IERC165-supportsInterface}
+    function supportsInterface(bytes4 interfaceId)
+    public
+    view
+    override(RoyaltiesConfig, ERC1155)
+    returns (bool)
+    {
+        return RoyaltiesConfig.supportsInterface(interfaceId) || ERC1155.supportsInterface(interfaceId);
     }
 
-    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
-        internal
-        override(ERC1155)
-        whenNotPaused
+    function uri(uint256 tokenId) public view override returns (string memory) {
+        return uris[tokenId];
+    }
+
+    function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    )
+    internal
+    override(ERC1155)
+    whenNotPaused
     {
         if (from != address(0) && to != address(0)) {
             require(!tokenLocked, "This token may not be transferred now");
@@ -166,7 +188,10 @@ contract SibHoodies is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist, Adm
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override(RoyaltiesConfig, ERC1155) returns (bool) {
-        return RoyaltiesConfig.supportsInterface(interfaceId) || ERC1155.supportsInterface(interfaceId);
+    function _mint(address to, uint256 id, uint256 amount, bytes memory data) internal override {
+        if (id == 1) {
+            totalMints += amount;
+        }
+        super._mint(to, id, amount, data);
     }
 }

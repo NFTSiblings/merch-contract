@@ -1,11 +1,17 @@
 {
-    "name": "Siblings 1 Year Virtual Hoodie",
-    "description": "This NFT has been redeemed for a 1 year anniversary limited edition physical NFT Siblings hoodie!",
-    "created_by": "Sibling Labs",
-    "image": "https://gateway.pinata.cloud/ipfs/QmfSdpqbCGQTsRow2Arp3NvAwn9q4U6HHar5rksrjX5756",
-    "image_url": "https://gateway.pinata.cloud/ipfs/QmfSdpqbCGQTsRow2Arp3NvAwn9q4U6HHar5rksrjX5756",
-    "attributes": [ {
-        "trait_type": "Redeemed for Hoodie",
-        "value": "True"
-      }]
+  "name": "Siblings 1 Year Virtual Hoodie",
+  "description": "This NFT has been redeemed for a 1 year anniversary limited edition physical NFT Siblings hoodie!\n\n\n\nThis token serves as a receipt for the redemption of an NFT Siblings hoodie. It is not transferrable.",
+  "created_by": "Sibling Labs",
+  "image": "https://gateway.pinata.cloud/ipfs/QmfSdpqbCGQTsRow2Arp3NvAwn9q4U6HHar5rksrjX5756",
+  "image_url": "https://gateway.pinata.cloud/ipfs/QmfSdpqbCGQTsRow2Arp3NvAwn9q4U6HHar5rksrjX5756",
+  "attributes": [
+    {
+      "trait_type": "Redeemed for Hoodie",
+      "value": "True"
+    },
+    {
+      "trait_type": "Transferrable",
+      "value": "False"
+    }
+  ]
 }

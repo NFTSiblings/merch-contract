@@ -2,8 +2,8 @@
   "name": "Siblings 1 Year Hoodie Crate",
   "description": "This NFT can be redeemed for a 1 year anniversary limited edition physical Siblings hoodie. Go to https://anniversary.clothing/ to redeem.",
   "created_by": "Sibling Labs",
-  "image": "https://gateway.pinata.cloud/ipfs/QmZNLskXVdGm6L7LH3LCow6xG8k1wxQTgUdco9ycVfvPi7",
-  "image_url": "https://gateway.pinata.cloud/ipfs/QmZNLskXVdGm6L7LH3LCow6xG8k1wxQTgUdco9ycVfvPi7",
+  "image": "https://gateway.pinata.cloud/ipfs/QmWti748ZpTAVP8ekMpy4Da33kfNLFkeLHvAXxVPmXbWZ2",
+  "image_url": "https://gateway.pinata.cloud/ipfs/QmWti748ZpTAVP8ekMpy4Da33kfNLFkeLHvAXxVPmXbWZ2",
   "attributes": [
     {
       "trait_type": "Redeemed for Hoodie",
@@ -11,7 +11,7 @@
     },
     {
       "trait_type": "Transferrable",
-      "value": "True"
+      "value": "False"
     }
   ]
 }

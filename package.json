@@ -20,6 +20,7 @@
     "solhint": "^3.3.7"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.5.0"
+    "@openzeppelin/contracts": "^4.5.0",
+    "@siblings/modules": "^1.0.8"
   }
 }

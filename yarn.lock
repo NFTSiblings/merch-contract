@@ -788,6 +788,11 @@
     "@sentry/types" "5.30.0"
     "tslib" "^1.9.3"
 
+"@siblings/modules@^1.0.8":
+  "integrity" "sha512-Sg19mpJkZuFwdgPI1XQNPmnOeqMQMb+EcCx/jkb5hyo9RSEaNwRfq33ZmqQFHm6obECfl0uuU8kapXrBN1km8A=="
+  "resolved" "https://registry.npmjs.org/@siblings/modules/-/modules-1.0.8.tgz"
+  "version" "1.0.8"
+
 "@sindresorhus/is@^0.14.0":
   "integrity" "sha512-9NET910DNaIPngYnLLPeg+Ogzqsi9uM4mSboU5y6p8S5DzMTVEsJZrawi+BoDNUVBa2DhJqQYUFvMDfgU062LQ=="
   "resolved" "https://registry.npmjs.org/@sindresorhus/is/-/is-0.14.0.tgz"

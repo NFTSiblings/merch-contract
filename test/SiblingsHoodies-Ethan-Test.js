@@ -2,7 +2,11 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 beforeEach(async function () {
-    contract = await ethers.getContractFactory("SibHoodies");
+    contract = await ethers.getContractFactory("TestToken");
+    [owner, addr1, addr2] = await ethers.getSigners();
+    testToken = await contract.deploy();
+
+    contract = await ethers.getContractFactory("SibHoodiesBeta");
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
     moreWallets = [];
@@ -11,19 +15,13 @@ beforeEach(async function () {
         moreWallets.push(wallet);
     }
 
-    contractInstance = await contract.deploy();
-
-    contract = await ethers.getContractFactory("TestToken");
-    [owner, addr1, addr2] = await ethers.getSigners();
-    testToken = await contract.deploy();
+    contractInstance = await contract.deploy(testToken.address);
 
     const initERC20Balance = ethers.BigNumber.from("100000000000000000000");
     await testToken.mint(addr1.address, initERC20Balance);
     await testToken.mint(addr2.address, initERC20Balance);
     await testToken.connect(addr1).approve(contractInstance.address, initERC20Balance);
     await testToken.connect(addr2).approve(contractInstance.address, initERC20Balance);
-
-    await contractInstance.setAshAddress(testToken.address);
 });
 
 describe("Deployment", function () {

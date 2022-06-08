@@ -15,185 +15,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
-contract AdminPrivileges {
-    address public _owner;
-
-    mapping(address => bool) public admins;
-
-    constructor() {
-        _owner = msg.sender;
-    }
-
-    /**
-    * @dev Returns true if provided address has admin status
-    * or is the contract owner.
-    */
-    function isAdmin(address _addr) public view returns (bool) {
-        return _owner == _addr || admins[_addr];
-    }
-
-    /**
-    * @dev Prevents a function from being called by anyone
-    * but the contract owner or approved admins.
-    */
-    modifier onlyAdmins() {
-        require(isAdmin(msg.sender), "AdminPrivileges: caller is not an admin");
-        _;
-    }
-
-    /**
-    * @dev Toggles admin status of provided addresses.
-    */
-    function toggleAdmins(address[] calldata accounts) external onlyAdmins {
-        for (uint i; i < accounts.length; i++) {
-            if (admins[accounts[i]]) {
-                delete admins[accounts[i]];
-            } else {
-                admins[accounts[i]] = true;
-            }
-        }
-    }
-}
-
-contract RoyaltiesConfig is AdminPrivileges {
-    uint256 private _royaltyBps;
-    address payable private _royaltyRecipient;
-    bytes4 private constant _INTERFACE_ID_ROYALTIES_EIP2981 = 0x2a55205a;
-    bytes4 private constant _INTERFACE_ID_ROYALTIES_RARIBLE = 0xb7799584;
-
-    /**
-     * @dev See {IERC165-supportsInterface}. Inherit this function
-     * to your base contract to add 
-     */
-    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
-        return interfaceId == _INTERFACE_ID_ROYALTIES_EIP2981 || interfaceId == _INTERFACE_ID_ROYALTIES_RARIBLE;
-    }
-
-    /**
-    * @dev Set royalty details.
-     */
-    function updateRoyalties(address payable recipient, uint256 bps) external virtual onlyAdmins {
-        _royaltyRecipient = recipient;
-        _royaltyBps = bps;
-    }
-
-    // RARIBLE ROYALTIES FUNCTIONS //
-
-    function getFeeRecipients(uint256) external virtual view returns (address payable[] memory recipients) {
-        if (_royaltyRecipient != address(0)) {
-            recipients = new address payable[](1);
-            recipients[0] = _royaltyRecipient;
-        }
-        return recipients;
-    }
-
-    function getFeeBps(uint256) external virtual view returns (uint[] memory bps) {
-        if (_royaltyRecipient != address(0)) {
-            bps = new uint256[](1);
-            bps[0] = _royaltyBps;
-        }
-        return bps;
-    }
-
-    // EIP2981 ROYALTY STANDARD FUNCTION //
-
-    function royaltyInfo(uint256, uint256 value) external virtual view returns (address, uint256) {
-        return (_royaltyRecipient, value*_royaltyBps/10000);
-    }
-}
-
-contract Allowlist is AdminPrivileges {
-    mapping(address => uint) public allowlist;
-
-    /**
-    * @dev Adds one to the number of allowlist places
-    * that each provided address is entitled to.
-    */
-    function addToAllowlist(address[] calldata _addr) public onlyAdmins {
-        for (uint i; i < _addr.length; i++) {
-            allowlist[_addr[i]]++;
-        }
-    }
-
-    /**
-    * @dev Sets the number of allowlist places for
-    * given addresses.
-    */
-    function setAllowlist(address[] calldata _addr, uint amount) public onlyAdmins {
-        for (uint i; i < _addr.length; i++) {
-            allowlist[_addr[i]] = amount;
-        }
-    }
-
-    /**
-    * @dev Removes all allowlist places for given
-    * addresses - they will no longer be allowed.
-    */
-    function removeFromAllowList(address[] calldata _addr) public onlyAdmins {
-        for (uint i; i < _addr.length; i++) {
-            allowlist[_addr[i]] = 0;
-        }
-    }
-
-    /**
-    * @dev Add this modifier to a function to require
-    * that the msg.sender is on the allowlist.
-    */
-    modifier requireAllowlist() {
-        require(allowlist[msg.sender] > 0, "Allowlist: caller is not on the allowlist");
-        _;
-    }
-}
-
-contract AdminPause is AdminPrivileges {
-    /**
-     * @dev Emitted when the pause is triggered by `account`.
-     */
-    event Paused(address account);
-
-    /**
-     * @dev Emitted when the pause is lifted by `account`.
-     */
-    event Unpaused(address account);
-
-    bool public paused;
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is not paused.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     */
-    modifier whenNotPaused() {
-        require(!paused || isAdmin(msg.sender), "AdminPausable: contract is paused");
-        _;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is paused.
-     *
-     * Requirements:
-     *
-     * - The contract must be paused.
-     */
-    modifier whenPaused() {
-        require(paused || isAdmin(msg.sender), "AdminPausable: contract is not paused");
-        _;
-    }
-
-    /**
-    * @dev Toggle paused state.
-    */
-    function togglePause() public onlyAdmins {
-        paused = !paused;
-        if (paused) {
-            emit Paused(msg.sender);
-        } else {
-            emit Unpaused(msg.sender);
-        }
-    }
-}
+import "@siblings/modules/RoyaltiesConfig.sol";
+import "@siblings/modules/MappingAllowlist.sol";
+import "@siblings/modules/AdminPause.sol";
 
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -219,7 +43,8 @@ contract SibHoodiesBeta is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist,
     bool public tokenLocked;
     bool public saleActive;
 
-    constructor() ERC1155("") {
+    constructor(address ash) ERC1155("") {
+        ASH_ADDRESS = ash;
         payoutAddress = msg.sender;
     }
 
@@ -272,11 +97,6 @@ contract SibHoodiesBeta is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist,
         }
     }
 
-    // THIS FUNCTION IS FOR TESTING PURPOSES AND SHOULD BE REMOVED ON DEPLOYMENT
-    function setAshAddress(address _addr) public onlyAdmins {
-        ASH_ADDRESS = _addr;
-    }
-
     function setPrices(uint256[4] calldata prices) public onlyAdmins {
         ASH_PRICE = prices[0];
         ASH_PRICE_AL = prices[1];
@@ -309,7 +129,7 @@ contract SibHoodiesBeta is ERC1155, AdminPrivileges, RoyaltiesConfig, Allowlist,
     }
 
     function withdraw() public onlyAdmins {
-        payable(_owner).transfer(address(this).balance);
+        payable(owner).transfer(address(this).balance);
     }
 
     // METADATA & MISC FUNCTIONS //

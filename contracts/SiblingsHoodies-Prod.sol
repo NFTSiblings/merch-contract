@@ -15,10 +15,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
-import "https://github.com/NFTSiblings/Modules/blob/master/AdminPrivileges.sol";
-import "https://github.com/NFTSiblings/Modules/blob/master/RoyaltiesConfig.sol";
-import "https://github.com/NFTSiblings/Modules/blob/master/Allowlist.sol";
-import "https://github.com/NFTSiblings/Modules/blob/master/AdminPause.sol";
+import "@siblings/modules/AdminPrivileges.sol";
+import "@siblings/modules/RoyaltiesConfig.sol";
+import "@siblings/modules/MappingAllowlist.sol";
+import "@siblings/modules/AdminPause.sol";
 
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
